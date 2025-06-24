@@ -4,60 +4,58 @@ from telegram import Update
 from telegram.ext import Updater, CommandHandler
 from datetime import datetime
 
-# Config from Environment Variables
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
+# Config
+BOT_TOKEN = os.environ["BOT_TOKEN"]  # سيتم أخذ التوكن من متغيرات Railway
 PORT = int(os.environ.get("PORT", 8443))
 
 def fetch_events():
-    """Fetch today's historical events from Wikipedia (text only)"""
+    """جلب الأحداث بدون صور"""
     today = datetime.utcnow()
     url = f"https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/{today.month}/{today.day}"
     
     try:
         response = requests.get(url, timeout=10)
-        return response.json().get("events", [])[:5]  # First 5 events
+        return response.json().get("events", [])[:5]  # أول 5 أحداث
     except Exception as e:
-        print(f"Error fetching events: {e}")
+        print(f"خطأ في جلب البيانات: {e}")
         return []
 
-def start_handler(update: Update, context):
-    """Handle /start command"""
+def start(update: Update, context):
+    """معالجة أمر /start"""
     try:
         events = fetch_events()
         
         if not events:
-            update.message.reply_text("📭 No historical events found today!")
+            update.message.reply_text("⚠️ لا توجد أحداث اليوم!")
             return
             
-        message = "📜 *Today in History*:\n\n"
+        message = "📅 *أحداث اليوم في التاريخ*:\n\n"
         for event in events:
-            message += f"• _{event.get('year', 'Unknown')}_: {event.get('text', '')}\n\n"
+            message += f"• سنة {event.get('year', '?')}: {event.get('text', '')}\n\n"
         
-        update.message.reply_text(message[:4096], parse_mode="Markdown")  # Telegram's max length
+        update.message.reply_text(message[:4096])  # الحد الأقصى لطول الرسالة
         
     except Exception as e:
-        print(f"Error in handler: {e}")
-        update.message.reply_text("❌ Failed to fetch events. Please try later.")
+        print(f"خطأ في الإرسال: {e}")
+        update.message.reply_text("❌ حدث خطأ، حاول لاحقًا")
 
 def main():
-    """Start the bot"""
+    """تشغيل البوت"""
     updater = Updater(BOT_TOKEN)
     
-    # Register handlers
-    updater.dispatcher.add_handler(CommandHandler("start", start_handler))
+    # للتشغيل على Railway (يستخدم Webhook)
+    updater.start_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        url_path=BOT_TOKEN,
+        webhook_url=f"https://{os.environ['RAILWAY_STATIC_URL']}/{BOT_TOKEN}"
+    )
     
-    # Start polling (for local testing)
-    updater.start_polling()
+    # للتشغيل المحلي (يستخدم Polling)
+    # updater.start_polling()
     
-    # For Railway deployment
-    # updater.start_webhook(
-    #     listen="0.0.0.0",
-    #     port=PORT,
-    #     url_path=BOT_TOKEN,
-    #     webhook_url=f"https://your-app-name.railway.app/{BOT_TOKEN}"
-    # )
-    
-    print("🤖 Bot is now running!")
+    updater.dispatcher.add_handler(CommandHandler("start", start))
+    print("🤖 البوت يعمل الآن!")
     updater.idle()
 
 if __name__ == "__main__":

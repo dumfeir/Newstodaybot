@@ -1,9 +1,8 @@
 import os
 import requests
-from telegram import Bot
-from apscheduler.schedulers.background import BackgroundScheduler
+from telegram import Bot, Update
+from telegram.ext import CommandHandler, Updater
 from datetime import datetime
-import time
 
 # ========== إعدادات البوت ==========
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
@@ -46,11 +45,10 @@ def get_historical_events():
 
     return selected_events
 
-# ========== نشر الأحداث في القناة ==========
-def send_daily_events():
-    print("جاري إرسال أحداث اليوم...")
+# ========== إرسال الأحداث إلى القناة عند استلام /start ==========
+def send_events_to_channel(update: Update, context):
     events = get_historical_events()
-
+    
     for event in events:
         caption = f"🎯 {event['title']}\n\n{event['description']}"
         try:
@@ -61,16 +59,21 @@ def send_daily_events():
         except Exception as e:
             print(f"خطأ أثناء الإرسال: {e}")
 
-# ========== جدولة الإرسال اليومي الساعة 8 مساءً UTC ==========
-scheduler = BackgroundScheduler()
-scheduler.add_job(send_daily_events, 'cron', hour=20, minute=0)  # 8 مساءً UTC
-scheduler.start()
+    # إرسال رسالة تأكيد للمستخدم
+    update.message.reply_text("✅ تم إرسال الأحداث إلى القناة!")
 
-print("✅ البوت يعمل وسيُرسل أحداث كل يوم الساعة 8 مساءً (UTC)")
+# ========== تشغيل البوت ومعالجة الأوامر ==========
+def main():
+    updater = Updater(token=BOT_TOKEN, use_context=True)
+    dispatcher = updater.dispatcher
 
-# إبقاء البرنامج حيًا دائمًا على Railway
-try:
-    while True:
-        time.sleep(60)
-except (KeyboardInterrupt, SystemExit):
-    scheduler.shutdown()
+    # إضافة معالج لأمر /start
+    dispatcher.add_handler(CommandHandler("start", send_events_to_channel))
+
+    # بدء البوت
+    updater.start_polling()
+    print("✅ البوت يعمل! أرسل /start لبدء الإرسال.")
+    updater.idle()
+
+if __name__ == "__main__":
+    main()

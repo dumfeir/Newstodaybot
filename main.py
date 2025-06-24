@@ -6,7 +6,6 @@ from datetime import datetime
 
 # ========== إعدادات البوت ==========
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-CHANNEL_ID = os.environ.get("CHANNEL_ID")  # مثل: "@history_today"
 bot = Bot(token=BOT_TOKEN)
 
 # ========== جلب الأحداث من Wikipedia ==========
@@ -45,34 +44,38 @@ def get_historical_events():
 
     return selected_events
 
-# ========== إرسال الأحداث إلى القناة عند استلام /start ==========
-def send_events_to_channel(update: Update, context):
+# ========== إرسال الأحداث للمستخدم عند /start ==========
+def send_events_to_user(update: Update, context):
+    user_id = update.message.chat.id  # ID المستخدم الذي ضغط /start
     events = get_historical_events()
+    
+    if not events:
+        update.message.reply_text("⚠️ لا توجد أحداث اليوم!")
+        return
+
+    update.message.reply_text("📜 أحداث تاريخية في هذا اليوم:")
     
     for event in events:
         caption = f"🎯 {event['title']}\n\n{event['description']}"
         try:
             if event["image_url"]:
-                bot.send_photo(chat_id=CHANNEL_ID, photo=event["image_url"], caption=caption[:1024])
+                bot.send_photo(chat_id=user_id, photo=event["image_url"], caption=caption[:1024])
             else:
-                bot.send_message(chat_id=CHANNEL_ID, text=caption)
+                bot.send_message(chat_id=user_id, text=caption)
         except Exception as e:
             print(f"خطأ أثناء الإرسال: {e}")
 
-    # إرسال رسالة تأكيد للمستخدم
-    update.message.reply_text("✅ تم إرسال الأحداث إلى القناة!")
-
-# ========== تشغيل البوت ومعالجة الأوامر ==========
+# ========== تشغيل البوت ==========
 def main():
     updater = Updater(token=BOT_TOKEN, use_context=True)
     dispatcher = updater.dispatcher
 
-    # إضافة معالج لأمر /start
-    dispatcher.add_handler(CommandHandler("start", send_events_to_channel))
+    # معالج أمر /start
+    dispatcher.add_handler(CommandHandler("start", send_events_to_user))
 
     # بدء البوت
     updater.start_polling()
-    print("✅ البوت يعمل! أرسل /start لبدء الإرسال.")
+    print("✅ البوت يعمل! أرسل /start لرؤية الأحداث.")
     updater.idle()
 
 if __name__ == "__main__":

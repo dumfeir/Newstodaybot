@@ -61,12 +61,12 @@ def send_daily_events():
         except Exception as e:
             print(f"خطأ أثناء الإرسال: {e}")
 
-# ========== جدولة الإرسال اليومي ==========
+# ========== جدولة الإرسال اليومي الساعة 8 مساءً UTC ==========
 scheduler = BackgroundScheduler()
-scheduler.add_job(send_daily_events, 'cron', hour=8, minute=0)  # 8 صباحًا UTC
+scheduler.add_job(send_daily_events, 'cron', hour=20, minute=0)  # 8 مساءً UTC
 scheduler.start()
 
-print("✅ البوت يعمل وسيُرسل أحداث كل يوم الساعة 8 صباحًا (UTC)")
+print("✅ البوت يعمل وسيُرسل أحداث كل يوم الساعة 8 مساءً (UTC)")
 
 # إبقاء البرنامج حيًا دائمًا على Railway
 try:
